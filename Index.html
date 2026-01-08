@@ -2,275 +2,258 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>HTCJaSnake</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTCJaSnake</title>
 
 <style>
+:root{
+  --bg:#0b1a12;
+  --panel:#10261a;
+  --accent:#00ff99;
+  --snake:#00d9ff;
+  --tail:#1fa36a;
+  --btn:#00ff99;
+}
+
 body{
   margin:0;
-  background:#111;
-  color:white;
-  font-family:Arial;
+  height:100vh;
   display:flex;
-  flex-direction:column;
+  justify-content:center;
   align-items:center;
-}
-
-#topbar{
-  display:flex;
-  gap:10px;
-  align-items:center;
-  margin:10px;
-}
-
-button{
-  background:#222;
+  background:
+    linear-gradient(90deg, rgba(0,255,150,.06) 1px, transparent 1px),
+    linear-gradient(rgba(0,255,150,.06) 1px, transparent 1px),
+    var(--bg);
+  background-size:40px 40px;
+  font-family:system-ui;
   color:white;
-  border:1px solid #555;
-  padding:6px 10px;
-  cursor:pointer;
 }
 
-#settings{
-  display:none;
-  opacity:0;
-  transition:opacity .5s;
-  background:#000a;
-  padding:10px;
-  border:1px solid #555;
-  margin-bottom:10px;
+#wrap{
+  display:flex;
+  gap:14px;
 }
 
 canvas{
-  background:#000;
+  width:400px;
+  height:400px;
+  border-radius:20px;
+  background:#08140d;
+  border:3px solid var(--accent);
   image-rendering:pixelated;
-  max-width:90vmin;
-  max-height:90vmin;
 }
 
-#gameOver{
+#ui{
+  background:var(--panel);
+  padding:14px;
+  border-radius:18px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  min-width:150px;
+}
+
+#score{
+  font-size:20px;
+  color:var(--accent);
+}
+
+button,input{
+  border:none;
+  border-radius:14px;
+  padding:8px;
+  font-size:14px;
+}
+
+button{
+  background:var(--btn);
+  cursor:pointer;
+}
+
+button:hover{
+  transform:scale(1.05);
+}
+
+#overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.85);
   display:none;
-  position:absolute;
-  background:#000d;
+  justify-content:center;
+  align-items:center;
+}
+
+#gameover{
+  background:var(--panel);
   padding:20px;
-  border:2px solid white;
+  border-radius:22px;
   text-align:center;
-}
-
-#joystick{
-  display:none;
-  margin-top:10px;
 }
 </style>
 </head>
 
 <body>
 
-<div id="topbar">
-  <div id="score">Score: 0</div>
-  <div id="best">Best: 0</div>
-  <button id="settingsBtn">⚙️</button>
+<div id="wrap">
+  <canvas id="game" width="400" height="400"></canvas>
+
+  <div id="ui">
+    <div id="score">Score: 0</div>
+    <label>Speed
+      <input type="range" id="speed" min="120" max="400" value="240">
+    </label>
+    <button id="pause">Pause</button>
+    <button onclick="resetGame()">New Game</button>
+  </div>
 </div>
 
-<div id="settings">
-  <label>Speed</label>
-  <input type="range" min="4" max="20" value="10" id="speedSlider"><br>
-  <button id="mobileBtn">Mobile Mode: OFF</button>
-  <button id="fixBtn">Fix Size: ON</button>
-</div>
-
-<canvas id="game" width="400" height="400"></canvas>
-
-<div id="joystick">
-  <button onclick="setDir('UP')">⬆</button><br>
-  <button onclick="setDir('LEFT')">⬅</button>
-  <button onclick="setDir('DOWN')">⬇</button>
-  <button onclick="setDir('RIGHT')">➡</button>
-</div>
-
-<div id="gameOver">
-  <h2>Game Over</h2>
-  <div id="finalScore"></div>
-  <button onclick="resetGame()">New Game</button>
+<div id="overlay">
+  <div id="gameover">
+    <h2>Game Over</h2>
+    <p id="finalScore"></p>
+    <button onclick="resetGame()">New Game</button>
+  </div>
 </div>
 
 <script>
-const canvas=document.getElementById("game");
-const ctx=canvas.getContext("2d");
-const box=20;
-const grid=20;
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-let snake=[{x:200,y:200}];
-let dir=null;
-let nextDir=null;
-let food=randomFood();
-let score=0;
-let best=localStorage.getItem("best")||0;
-let speed=10;
-let gameOver=false;
+const box = 20;
+const grid = 20;
 
-document.getElementById("best").innerText="Best: "+best;
+let snake, food, dir, score;
+let gameOver=false, paused=false;
+let speedDelay=240, lastMove=0;
 
-// SETTINGS
-const settings=document.getElementById("settings");
-document.getElementById("settingsBtn").onclick=()=>{
-  settings.style.display="block";
-  setTimeout(()=>settings.style.opacity=1,10);
-};
-
-document.getElementById("speedSlider").oninput=e=>{
-  speed=+e.target.value;
-};
-
-let mobile=false;
-document.getElementById("mobileBtn").onclick=()=>{
-  mobile=!mobile;
-  document.getElementById("joystick").style.display=mobile?"block":"none";
-  document.getElementById("mobileBtn").innerText="Mobile Mode: "+(mobile?"ON":"OFF");
-};
-
-let fixSize=true;
-document.getElementById("fixBtn").onclick=()=>{
-  fixSize=!fixSize;
-  resize();
-  document.getElementById("fixBtn").innerText="Fix Size: "+(fixSize?"ON":"OFF");
-};
-
-function resize(){
-  if(!fixSize){
-    canvas.style.width="400px";
-    canvas.style.height="400px";
-    return;
-  }
-  const s=Math.min(innerWidth*0.9,innerHeight*0.7,400);
-  canvas.style.width=s+"px";
-  canvas.style.height=s+"px";
+function resetGame(){
+  snake=[{
+    gx:8, gy:8,
+    x:8*box, y:8*box,
+    tx:8*box, ty:8*box
+  }];
+  dir=null;
+  score=0;
+  gameOver=false;
+  paused=false;
+  document.getElementById("score").textContent="Score: 0";
+  document.getElementById("overlay").style.display="none";
 }
-window.onresize=resize;
-resize();
 
-// INPUT
+resetGame();
+
+document.getElementById("speed").oninput=e=>{
+  speedDelay=+e.target.value;
+};
+
+document.getElementById("pause").onclick=()=>{
+  paused=!paused;
+  pause.textContent=paused?"Resume":"Pause";
+};
+
 document.addEventListener("keydown",e=>{
-  if(e.key=="ArrowUp"||e.key=="w") nextDir="UP";
-  if(e.key=="ArrowDown"||e.key=="s") nextDir="DOWN";
-  if(e.key=="ArrowLeft"||e.key=="a") nextDir="LEFT";
-  if(e.key=="ArrowRight"||e.key=="d") nextDir="RIGHT";
+  if(gameOver||paused) return;
+  const d={
+    ArrowUp:"UP",ArrowDown:"DOWN",
+    ArrowLeft:"LEFT",ArrowRight:"RIGHT",
+    w:"UP",s:"DOWN",a:"LEFT",d:"RIGHT"
+  }[e.key];
+  if(!d) return;
+
+  if(snake.length>1){
+    if((dir==="UP"&&d==="DOWN")||
+       (dir==="DOWN"&&d==="UP")||
+       (dir==="LEFT"&&d==="RIGHT")||
+       (dir==="RIGHT"&&d==="LEFT")) return;
+  }
+  dir=d;
 });
 
-function setDir(d){ nextDir=d; }
-
-// GAME LOOP
-setInterval(loop,1000/60);
-
-let moveTimer=0;
-
-function loop(){
-  if(gameOver) return;
-  moveTimer+=speed;
-  if(moveTimer>=20){
-    moveTimer=0;
-    move();
-  }
-  draw();
+function spawnFood(){
+  food={
+    x:Math.floor(Math.random()*grid),
+    y:Math.floor(Math.random()*grid)
+  };
 }
+spawnFood();
 
-function move(){
-  if(nextDir){
-    if(snake.length==1 || !isOpposite(dir,nextDir))
-      dir=nextDir;
-  }
+function update(){
   if(!dir) return;
 
-  const head={...snake[0]};
-  if(dir=="UP") head.y-=box;
-  if(dir=="DOWN") head.y+=box;
-  if(dir=="LEFT") head.x-=box;
-  if(dir=="RIGHT") head.x+=box;
+  const head=snake[0];
+  let nx=head.gx, ny=head.gy;
 
-  // WALL
-  if(head.x<0||head.y<0||head.x>=400||head.y>=400) return end();
+  if(dir==="UP") ny--;
+  if(dir==="DOWN") ny++;
+  if(dir==="LEFT") nx--;
+  if(dir==="RIGHT") nx++;
 
-  // SELF
-  for(let p of snake)
-    if(p.x==head.x&&p.y==head.y) return end();
+  if(nx<0||ny<0||nx>=grid||ny>=grid){
+    endGame(); return;
+  }
 
-  snake.unshift(head);
+  for(let i=1;i<snake.length;i++){
+    if(snake[i].gx===nx && snake[i].gy===ny){
+      endGame(); return;
+    }
+  }
 
-  // FOOD
-  if(head.x==food.x&&head.y==food.y){
+  snake.unshift({
+    gx:nx, gy:ny,
+    x:head.x, y:head.y,
+    tx:nx*box, ty:ny*box
+  });
+
+  if(nx===food.x && ny===food.y){
     score++;
-    document.getElementById("score").innerText="Score: "+score;
-    food=randomFood();
-  }else{
+    document.getElementById("score").textContent="Score: "+score;
+    spawnFood();
+  } else {
     snake.pop();
   }
 }
 
-function end(){
-  gameOver=true;
-  best=Math.max(best,score);
-  localStorage.setItem("best",best);
-  document.getElementById("best").innerText="Best: "+best;
-  document.getElementById("finalScore").innerText="Score: "+score;
-  document.getElementById("gameOver").style.display="block";
-}
-
-function resetGame(){
-  snake=[{x:200,y:200}];
-  dir=null;
-  nextDir=null;
-  score=0;
-  gameOver=false;
-  food=randomFood();
-  document.getElementById("score").innerText="Score: 0";
-  document.getElementById("gameOver").style.display="none";
-}
-
-// DRAW
 function draw(){
-  // GRID
-  for(let y=0;y<grid;y++)
+  ctx.clearRect(0,0,400,400);
+  
+  for(let y=0;y<grid;y++){
     for(let x=0;x<grid;x++){
-      ctx.fillStyle=(x+y)%2?"#2f7d32":"#3fa34d";
+      ctx.fillStyle=(x+y)%2?"#0f3":"#084";
       ctx.fillRect(x*box,y*box,box,box);
     }
+  }
 
-  // FOOD
   ctx.fillStyle="red";
-  ctx.fillRect(food.x,food.y,box,box);
+  ctx.beginPath();
+  ctx.arc(food.x*box+10,food.y*box+10,7,0,Math.PI*2);
+  ctx.fill();
 
-  // LEAF
-  ctx.fillStyle="#6f6";
-  ctx.fillRect(food.x+box*0.25,food.y-box*0.75,box*0.5,box*0.75);
-
-  // STICK
-  ctx.fillStyle="#964";
-  ctx.fillRect(food.x+box*0.45,food.y-box*0.25,box*0.1,box*0.25);
-
-  // SNAKE
-  snake.forEach((p,i)=>{
-    ctx.fillStyle=i==0?"#4af":"#39f";
-    ctx.fillRect(p.x,p.y,box,box);
-
-    if(i==0){
-      ctx.fillStyle="black";
-      ctx.fillRect(p.x+5,p.y+6,4,4);
-      ctx.fillRect(p.x+11,p.y+6,4,4);
-    }
+  snake.forEach((s,i)=>{
+    s.x+=(s.tx-s.x)*0.35;
+    s.y+=(s.ty-s.y)*0.35;
+    ctx.fillStyle=i? "var(--tail)" : "var(--snake)";
+    ctx.beginPath();
+    ctx.roundRect(s.x,s.y,box,box,6);
+    ctx.fill();
   });
 }
 
-function randomFood(){
-  return{
-    x:Math.floor(Math.random()*grid)*box,
-    y:Math.floor(Math.random()*grid)*box
-  };
+function endGame(){
+  gameOver=true;
+  document.getElementById("finalScore").textContent="Score: "+score;
+  document.getElementById("overlay").style.display="flex";
 }
 
-function isOpposite(a,b){
-  return (a=="UP"&&b=="DOWN")||(a=="DOWN"&&b=="UP")||
-         (a=="LEFT"&&b=="RIGHT")||(a=="RIGHT"&&b=="LEFT");
+function loop(t){
+  if(!paused && !gameOver && t-lastMove>speedDelay){
+    update();
+    lastMove=t;
+  }
+  draw();
+  requestAnimationFrame(loop);
 }
+requestAnimationFrame(loop);
 </script>
 </body>
 </html>
