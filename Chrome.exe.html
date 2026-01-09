@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>New tab - Microsoft Edge</title>
+
+<style>
+:root {
+    --bg: #1f1f1f;
+    --bg2: #2a2a2a;
+    --border: #3a3a3a;
+    --text: #e6e6e6;
+    --accent: #3b82f6;
+}
+
+* {
+    box-sizing: border-box;
+    font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+}
+
+/* ===== WINDOW BAR ===== */
+.window-bar {
+    height: 32px;
+    background: #181818;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+}
+
+.window-title {
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+.window-controls {
+    margin-left: auto;
+    display: flex;
+    gap: 14px;
+}
+
+.ctrl {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #555;
+}
+
+/* ===== TAB BAR ===== */
+.tabs {
+    display: flex;
+    align-items: center;
+    background: var(--bg2);
+    padding: 6px;
+}
+
+.tab {
+    background: #333;
+    padding: 6px 12px;
+    border-radius: 8px 8px 0 0;
+    font-size: 13px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.tab span {
+    opacity: 0.8;
+}
+
+.plus {
+    margin-left: 8px;
+    font-size: 18px;
+    opacity: 0.6;
+}
+
+/* ===== ADDRESS BAR ===== */
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    background: #262626;
+    border-bottom: 1px solid var(--border);
+}
+
+.icon {
+    opacity: 0.6;
+}
+
+.omnibox {
+    flex: 1;
+    background: #1b1b1b;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 8px 14px;
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+}
+
+.omnibox:focus {
+    border-color: var(--accent);
+}
+
+/* ===== PAGE ===== */
+.page {
+    padding: 40px;
+    opacity: 0.5;
+}
+
+/* ===== ERROR POPUP ===== */
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.error-box {
+    background: #121212;
+    border: 1px solid #333;
+    padding: 24px;
+    width: 520px;
+    border-radius: 10px;
+    box-shadow: 0 0 30px rgba(0,0,0,0.8);
+}
+
+.error-title {
+    font-size: 16px;
+    margin-bottom: 14px;
+}
+
+.error-text {
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre-line;
+}
+
+.error-btn {
+    margin-top: 20px;
+    background: #2f2f2f;
+    border: 1px solid #444;
+    color: white;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+</style>
+</head>
+<body>
+
+<div class="window-bar">
+    <div class="window-title">Microsoft Edge</div>
+    <div class="window-controls">
+        <div class="ctrl"></div>
+        <div class="ctrl"></div>
+        <div class="ctrl"></div>
+    </div>
+</div>
+
+<div class="tabs">
+    <div class="tab">
+        <span>New tab</span> ✕
+    </div>
+    <div class="plus">+</div>
+</div>
+
+<div class="toolbar">
+    <div class="icon">←</div>
+    <div class="icon">→</div>
+    <div class="icon">⟳</div>
+    <input class="omnibox" id="address" placeholder="Search or enter web address">
+    <div class="icon">☆</div>
+    <div class="icon">⋯</div>
+</div>
+
+<div class="page">
+    New tab page
+</div>
+
+<!-- ERROR -->
+<div class="overlay" id="overlay">
+    <div class="error-box">
+        <div class="error-title">Failed To Search</div>
+        <div class="error-text">
+Error text: PIRATED_MICROSOFT_EDGE_APPLICATION
+
+If you may think this is a false report, This is actually a pirated version of Microsoft Edge. Try reinstalling Microsoft Edge to fix the problem.
+
+Error code: 0X4FEPI71AT30FD
+        </div>
+        <button class="error-btn" onclick="closeError()">OK</button>
+    </div>
+</div>
+
+<script>
+const input = document.getElementById("address");
+const overlay = document.getElementById("overlay");
+
+input.addEventListener("keydown", e => {
+    if (e.key === "Enter" && input.value.trim() !== "") {
+        overlay.style.display = "flex";
+        input.blur();
+    }
+});
+
+function closeError() {
+    overlay.style.display = "none";
+    input.value = "";
+}
+</script>
+
+</body>
+</html>
